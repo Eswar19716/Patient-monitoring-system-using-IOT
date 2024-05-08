@@ -1,0 +1,78 @@
+#include <Wire.h>
+#include "MAX30100_PulseOximeter.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 32
+#define OLED_RESET    -1
+#define SCREEN_ADDRESS 0x3C // OLED display address
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+PulseOximeter pox;
+
+void onBeatDetected()
+{
+    Serial.println("Beat detected!");
+}
+
+void setup()
+{
+    Serial.begin(9600);
+    Serial.println("Initializing MAX30100 sensor...");
+
+    if (!pox.begin()) {
+        Serial.println("Could not find MAX30100 sensor! Check wiring or sensor health.");
+        while (1);
+    } else {
+        Serial.println("MAX30100 sensor initialized.");
+    }
+
+    pox.setOnBeatDetectedCallback(onBeatDetected);
+
+    Serial.println("Initializing OLED display...");
+
+    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        Serial.println(F("Make sure your OLED is connected, address is correct, and you have the correct OLED library."));
+        while (1);
+    }
+
+    Serial.println("OLED display initialized.");
+
+    display.display();
+    delay(2000);
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+
+    Serial.println("Initialization completed.");
+}
+
+void loop()
+{
+    pox.update();
+
+    if (pox.getHeartRate() > 0 && pox.getSpO2() > 0) {
+        float heartRate = pox.getHeartRate();
+        float SpO2 = pox.getSpO2();
+
+        Serial.print("Heart rate: ");
+        Serial.print(heartRate);
+        Serial.print(" bpm / SpO2: ");
+        Serial.print(SpO2);
+        Serial.println("%");
+
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.print("HR: ");
+        display.println(heartRate);
+        display.print("SpO2: ");
+        display.print(SpO2);
+        display.println("%");
+        display.display();
+    }
+
+    delay(1000); // Delay between readings
+}
